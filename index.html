@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <link
+        rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+        crossorigin="anonymous">
+    </link>
+    <script
+        src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+        integrity="sha256-pasqAKBDmFT4eHoN2ndd6lN370kFiGUFyTiUHWhU7k8="
+        crossorigin="anonymous">
+    </script>
+    <style>
+        #chat {
+            display: none;
+            grid-template-rows: auto 40px;
+            grid-template-columns: 3fr 1fr;
+            grid-gap: 10px;
+            height: calc(99vh - 8px);
+            margin: 8px;
+        }
+        #chat .notification {
+            font-size: 0.9em;
+        }
+        #messages {
+            border-right: 3px solid #aaa;
+            overflow: auto;
+            padding-left: 4px;
+        }
+        #chat-info {
+        }
+        #chat-input {
+            grid-column: 1/3;
+        }
+        .nickname-error {
+            display: none;
+        }
+        .app-title {
+            margin-top: 25vh;
+            font-size: 5em;
+            text-align: center;
+        }
+        .user-typing-status {
+            height: 2em;
+            font-size: 0.8em;
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div id="login" class="container-fluid">
+        <div class="row">
+            <div class="app-title col-12">WS CHAT</div>
+        </div>
+        <div class="row">
+            <p class="mt-3 col-12 text-center">Pick your nickname:</p>
+            <div class="offset-3 col-6">
+                <div class="input-group">
+                    <input class="form-control" name="nickname" autocomplete="off" type="text" />
+                    <div class="input-group-append">
+                        <button class="btn btn-primary pick-nick" type="button">OK</button>
+                    </div>
+                </div>
+                <div class="nickname-error text-center text-danger"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- <div id="chat" class="container-fluid">
+        <div class="row">
+            <div id="messages" class="col-md-8 col-sm-12"></div>
+            <div id="chat-info" class="col-md-4 col-sm-12"></div>
+        </div>
+        <div class="row user-typing-status text-muted">
+        </div>
+        <div class="row">
+            <div class="input-group col-12">
+                <input class="form-control col" name="message" autocomplete="off" type="text" />
+                <div class="input-group-append">
+                    <button class="btn btn-primary send-message" type="button">Send</button>
+                </div>
+            </div>
+        </div>
+    </div> -->
+
+    <div id="chat">
+        <div id="messages"></div>
+        <div id="chat-info"></div>
+        <div id="chat-input">
+            <div class="input-group">
+                <input class="form-control col" name="message" autocomplete="off" type="text" />
+                <div class="input-group-append">
+                    <button class="btn btn-primary send-message" type="button">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        $(function() {
+            var chatNickname       = '';
+            var socket             = io();
+            var $msgInput          = $('input[name=message]');
+            var $inputNick         = $('input[name=nickname]');
+            var $nicknameErrorNode = $('.nickname-error');
+            var $chatInfo          = $('#chat-info');
+            var $userTypingNode    = $('.user-typing-status');
+            var escape             = (text) => text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+            var sendMessage = () => {
+                var message = $msgInput.val();
+                if (message != '') {
+                    socket.emit('chat message', message);
+                    $msgInput.val('');
+                }
+            };
+            var pickNick = () => {
+                var nickname = $inputNick.val();
+                if (nickname != '') {
+                    socket.emit('nickname request', nickname);
+                }
+            }
+
+            // listen when nickanme is selected
+            $inputNick.on('keyup', function (e) {
+                $nicknameErrorNode.hide();
+                if (e.keyCode == 13) {
+                    pickNick();
+                }
+            });
+            $('.pick-nick').click(function (e) {
+                e.preventDefault();
+                pickNick();
+            });
+
+            // listen when user sends a message to chat
+            $('.send-message').click(function (e) {
+                e.preventDefault();
+                sendMessage();
+            });
+            $msgInput.on('keyup', function (e) {
+                if (e.keyCode == 13) {
+                    sendMessage();
+                }
+            });
+
+            // emit "user typing" message depending on whether message input is empty or not
+            $msgInput.on('keyup change', function (e) {
+                socket.emit('user typing', $msgInput.val() !== '');
+            });
+
+            // handle nickname accept/reject
+            socket.on('nickname accepted', function ({nickname}) {
+                $('#login').hide();
+                $('#chat').show().css('display', 'grid');
+                chatNickname = nickname;
+            });
+            socket.on('nickname rejected', function ( {message} ) {
+                $('#login').show();
+                $('#chat').hide();
+                nickname = null;
+                $nicknameErrorNode.text(message).show();
+            });
+
+            // handle updating users list
+            socket.on('users list', function (users) {
+                $chatInfo.empty();
+                users.forEach(function (user) {
+                    $('<div class="user-nick">').text(user).appendTo($chatInfo);
+                });
+            });
+
+            // handle incoming chat message
+            socket.on('chat message', function (data) {
+                // escape message
+                const message = escape(data.message);
+                $('#messages').append(`
+                    <div class="message">
+                        <span class="nick font-weight-bold">${data.nickname}</span>:
+                        <span class="message-text">${message}</span>
+                    </div>
+                `);
+            });
+
+            // handle incoming chat notofication
+            socket.on('chat notification', function (data) {
+                $('#messages').append(`
+                    <div class="notification text-muted font-italic">
+                        <span class="message-text">${data.message}</span>
+                    </div>
+                `);
+            });
+
+            // handle user typing update
+            socket.on('user typing', function (data) {
+                // first, remove typing info
+                $userTypingNode.find('.status').filter(function () {
+                    return $(this).data('nickname') === data.nickname;
+                }).remove();
+
+                // add info if user is typing
+                var isSomeoneElseTyping = $userTypingNode.find('.status').length > 0;
+                if (data.isTyping) {
+                    $('<div class="status">')
+                        .data('nickname', data.nickname)
+                        .text((isSomeoneElseTyping ? ', ' : '') + `${data.nickname} is typing`)
+                        .appendTo($userTypingNode);
+                }
+            });
+
+            // focus nickname if not selected
+            if (!chatNickname) {
+                $inputNick.focus();
+            }
+        });
+    </script>
+  </body>
+</html>
+
