@@ -1,1 +1,1 @@
-# Simple Chat using socket.io
+# Simple chat using socket.io
