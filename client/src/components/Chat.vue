@@ -62,6 +62,9 @@ export default {
   },
   methods: {
     sendMessage () {
+      if (this.message.length == 0) {
+        return
+      }
       this.socket.emit('chat message', this.message)
       this.message = ''
       this.updateTyping()
@@ -85,7 +88,8 @@ export default {
   grid-template-rows: auto 40px .8em;
   grid-template-columns: 3fr 1fr;
   grid-gap: 10px;
-  height: calc(99vh - 8px);
+  height: calc(100vh - 16px);
+  height: 150px;
   margin: 8px;
 }
 #messages {
