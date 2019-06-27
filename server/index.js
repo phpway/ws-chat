@@ -1,7 +1,9 @@
 const port        = process.env.SERVER_PORT || 3000
-var   app         = require('express')()
+var   express     = require('express')
+var   app         = express()
 var   http        = require('http').createServer(app)
 var   io          = require('socket.io')(http)
+var   path        = require('path')
 var   nicknames   = []
 var   typingUsers = []
 
@@ -96,3 +98,6 @@ io.on('connection', function(socket) {
 http.listen(port, function () {
   console.log(`listening on port ${port}`)
 })
+
+// Routing
+app.use(express.static(path.join(__dirname, '../client/dist')));

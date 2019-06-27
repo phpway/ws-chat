@@ -55,6 +55,11 @@ export default {
       $vm.users = users
     })
   },
+  updated () {
+    // keep messages window scrolled to bottom to see the newest messages
+    var messages = this.$el.querySelector('#messages')
+    messages.scrollTop = messages.scrollHeight
+  },
   computed: {
     usersCount () {
       return this.users.length
@@ -62,7 +67,7 @@ export default {
   },
   methods: {
     sendMessage () {
-      if (this.message.length == 0) {
+      if (this.message.length === 0) {
         return
       }
       this.socket.emit('chat message', this.message)
@@ -89,7 +94,6 @@ export default {
   grid-template-columns: 3fr 1fr;
   grid-gap: 10px;
   height: calc(100vh - 16px);
-  height: 150px;
   margin: 8px;
 }
 #messages {
