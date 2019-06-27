@@ -11,7 +11,7 @@ Vue.directive('focus', {
   }
 })
 
-new Vue({
+new Vue({ // eslint-disable-line no-new
   el: '#app',
   components: { App },
   template: '<App/>'
