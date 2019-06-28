@@ -2,7 +2,7 @@ const port        = process.env.SERVER_PORT || 3000
 var   express     = require('express')
 var   app         = express()
 var   http        = require('http').createServer(app)
-var   io          = require('socket.io')(http)
+var   io          = require('socket.io')(http, {serveClient: false, pingInterval: 10000, cookie: false})
 var   path        = require('path')
 var   nicknames   = []
 var   typingUsers = []
@@ -42,7 +42,9 @@ function acceptUser (name) {
 function kickUser (name) {
   nicknames = nicknames.filter((nick) => nick !== name)
   emitUsersList()
-  io.emit('chat message', {type: 'system_message', message: `User ${name} left chat`})
+  if (name !== null) {
+    io.emit('chat message', {type: 'system_message', message: `User ${name} left chat`})
+  }
 }
 
 io.on('connection', function(socket) {
@@ -77,9 +79,13 @@ io.on('connection', function(socket) {
 
   // listen to user disconnect
   socket.on('disconnect', function () {
-    console.log(`user ${chatNickname} disconnected`)
+    console.log(`=== user ${chatNickname} disconnected`)
     kickUser(chatNickname)
     chatNickname = null
+  })
+
+  socket.on('reconnect', function () {
+    console.log(`--- user ${chatNickname} reconnected`)
   })
 
   // listen to user typing update

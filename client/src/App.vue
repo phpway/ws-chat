@@ -29,6 +29,13 @@ export default {
   components: {
     Chat,
     Login
+  },
+  created () {
+    socket.on('connect_timeout', (timeout) => console.log('Timed out! ', timeout))
+    socket.on('disconnect', (reason) => {
+      console.log('Disconnected', reason)
+      this.nickname = ''
+    })
   }
 }
 </script>
